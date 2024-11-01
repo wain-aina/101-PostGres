@@ -2,6 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 const passport = require("passport");
 const session = require("express-session");
 const flash = require('connect-flash');
@@ -44,7 +45,11 @@ app.use(session({
             host: process.env.DB_LOCATION,
             database: process.env.DB_NAME,
             password: process.env.DB_PASS,
-            port: process.env.PGPORT,
+            port: process.env.DB_PORT,
+            // ssl: {
+            //     rejectUnauthorized: false,
+            //     ca: fs.readFileSync('pg.pem')
+            //   }
         }),
         createTableIfMissing: true,
         
@@ -153,7 +158,7 @@ app.get('/reset/:token', async (req, res) => {
         where: { 
             resetPasswordToken: req.params.token, 
             resetPasswordExpires: { 
-                [Sequelize.Op.gt]: Date.now() 
+                [sequelize.Sequelize.Op.gt]: Date.now() 
             } 
         }
     });
@@ -168,7 +173,5 @@ app.get('/reset/:token', async (req, res) => {
         title: 'Reset Password' 
     });
 });
-
-
 
 app.listen(PORT, () => console.log(`Server started on ${PORT}`));
