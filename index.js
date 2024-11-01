@@ -23,42 +23,19 @@ const PORT = 3000;
 // SALT ROUNDS
 const saltRounds = 10;
 
+//SEQULIZE CONTROLLER
+const sequelize = require('./controllers/sequelize.js');
+
 //PASSPORT CONTROLLER
 const auth = require('./controllers/passport.js')
 
 // NODEMAILER CONTROLLER
 const transporter = require('./controllers/nodemailer.js');
 
-// Initialize PostgreSQL connection with Sequelize
-const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASS, {
-    host: process.env.DB_LOCATION,
-    dialect: 'postgres',
-    logging: false,
-});
+// SCHEMA
+const User = require('./models/user.js');
 
-// Check PostgreSQL connection
-sequelize.authenticate().then(() => {
-    console.log('DB connected successfully');
-}).catch(err => {
-    console.error('Unable to connect to the PostgreSQL database:', err);
-});
-
-// Define the User model
-const User = sequelize.define('User', {
-    username: { type: Sequelize.STRING, unique: true, allowNull: false },
-    identifier: Sequelize.STRING,
-    password: Sequelize.STRING,
-    resetPasswordToken: Sequelize.STRING,
-    resetPasswordExpires: Sequelize.DATE,
-    isVerified: { type: Sequelize.BOOLEAN, defaultValue: false }
-});
-
-// Sync models with the database
-sequelize.sync().then(() => {
-    console.log("Database & tables created!");
-}).catch((error) => console.log("Error creating tables:", error));
-
-// Initialize other NPM packages
+// INITIALIZE NPM PACKAGES
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -96,7 +73,7 @@ app.use((req, res, next) => {
 
 app.use('/', auth);
 
-// Logic and Routes
+// LOGIC
 
 app.get('/', (req, res) => res.render('site/index'));
 
@@ -115,6 +92,8 @@ app.get('/team', (req,res) => {
 app.get('/why', (req,res) => {
     res.render('site/why')
 })
+
+//HOME
 
 app.get('/home', async (req, res) => {
     if (req.isAuthenticated()) {
@@ -142,7 +121,23 @@ app.get('/home', async (req, res) => {
     }
 });
 
-// Register Route
+// LOGIN
+app.get('/login', (req, res) => {
+    res.render('login', {
+        user: req.user,
+        alerts: req.flash(),
+        title: 'Login'
+    });
+});
+
+app.post("/login", passport.authenticate("local", {
+    failureRedirect: "/login",
+}), (req, res) => {
+    req.flash('success', "Welcome Back. Pick Up Where You Left Off");
+    res.redirect("/home");
+});
+
+// REGISTER
 app.get('/register', async (req, res) => {
     res.render('register', { title: "Register" });
 });
@@ -170,23 +165,7 @@ app.post("/register", async function (req, res) {
     }
 });
 
-// Login Route
-app.get('/login', (req, res) => {
-    res.render('login', {
-        user: req.user,
-        alerts: req.flash(),
-        title: 'Login'
-    });
-});
-
-app.post("/login", passport.authenticate("local", {
-    failureRedirect: "/login",
-}), (req, res) => {
-    req.flash('success', "Welcome Back. Pick Up Where You Left Off");
-    res.redirect("/home");
-});
-
-// Logout Route
+// LOGOUT
 app.post('/logout', (req, res, next) => {
     req.logout((err) => {
         if (err) { return next(err); }
@@ -195,7 +174,7 @@ app.post('/logout', (req, res, next) => {
     });
 });
 
-// Forgot Password Route
+// FORGOT
 app.get('/forgot', (req, res)=>{
     if(req.isAuthenticated()){
         res.redirect("/home");
@@ -244,7 +223,7 @@ app.post('/forgot', async (req, res, next) => {
     }
 });
 
-// Reset Password Route
+// RESET
 app.get('/reset/:token', async (req, res) => {
     const user = await User.findOne({
         where: { resetPasswordToken: req.params.token, resetPasswordExpires: { [Sequelize.Op.gt]: Date.now() } }
